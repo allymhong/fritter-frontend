@@ -13,6 +13,7 @@ export default {
       hasBody: true,
       fields: [
         {id: 'content', label: 'Content', value: ''}
+        // {id: 'citations', label: 'Citations', value: []}
       ],
       title: 'Create a freet',
       refreshFreets: true,

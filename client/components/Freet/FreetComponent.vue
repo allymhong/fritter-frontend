@@ -13,44 +13,27 @@
         v-if="$store.state.username === freet.author"
         class="actions"
       >
-        <button
-          v-if="editing"
-          @click="submitEdit"
-        >
-          ✅ Save changes
-        </button>
-        <button
-          v-if="editing"
-          @click="stopEditing"
-        >
-          🚫 Discard changes
-        </button>
-        <button
-          v-if="!editing"
-          @click="startEditing"
-        >
-          ✏️ Edit
-        </button>
+
+      <!-- Add another Vue file and then import it -->
         <button @click="deleteFreet">
           🗑️ Delete
         </button>
       </div>
     </header>
-    <textarea
-      v-if="editing"
-      class="content"
-      :value="draft"
-      @input="draft = $event.target.value"
-    />
     <p
-      v-else
       class="content"
     >
       {{ freet.content }}
     </p>
+
+      <!-- Adding Upvote -->
+    <button 
+      v-if="$store.state.username != null"
+      @click="requestUpvote()" >
+        ⬆️ Upvote
+    </button>
     <p class="info">
-      Posted at {{ freet.dateModified }}
-      <i v-if="freet.edited">(edited)</i>
+      Posted at {{ freet.dateCreated }}
     </p>
     <section class="alerts">
       <article
@@ -63,8 +46,8 @@
     </section>
   </article>
 </template>
-
 <script>
+
 export default {
   name: 'FreetComponent',
   props: {
@@ -76,26 +59,10 @@ export default {
   },
   data() {
     return {
-      editing: false, // Whether or not this freet is in edit mode
-      draft: this.freet.content, // Potentially-new content for this freet
       alerts: {} // Displays success/error messages encountered during freet modification
     };
   },
   methods: {
-    startEditing() {
-      /**
-       * Enables edit mode on this freet.
-       */
-      this.editing = true; // Keeps track of if a freet is being edited
-      this.draft = this.freet.content; // The content of our current "draft" while being edited
-    },
-    stopEditing() {
-      /**
-       * Disables edit mode on this freet.
-       */
-      this.editing = false;
-      this.draft = this.freet.content;
-    },
     deleteFreet() {
       /**
        * Deletes this freet.
@@ -106,28 +73,6 @@ export default {
           this.$store.commit('alert', {
             message: 'Successfully deleted freet!', status: 'success'
           });
-        }
-      };
-      this.request(params);
-    },
-    submitEdit() {
-      /**
-       * Updates freet to have the submitted draft content.
-       */
-      if (this.freet.content === this.draft) {
-        const error = 'Error: Edited freet content should be different than current freet content.';
-        this.$set(this.alerts, error, 'error'); // Set an alert to be the error text, timeout of 3000 ms
-        setTimeout(() => this.$delete(this.alerts, error), 3000);
-        return;
-      }
-
-      const params = {
-        method: 'PATCH',
-        message: 'Successfully edited freet!',
-        body: JSON.stringify({content: this.draft}),
-        callback: () => {
-          this.$set(this.alerts, params.message, 'success');
-          setTimeout(() => this.$delete(this.alerts, params.message), 3000);
         }
       };
       this.request(params);
@@ -153,9 +98,39 @@ export default {
           throw new Error(res.error);
         }
 
-        this.editing = false;
         this.$store.commit('refreshFreets');
 
+        params.callback();
+      } catch (e) {
+        this.$set(this.alerts, e, 'error');
+        setTimeout(() => this.$delete(this.alerts, e), 3000);
+      }
+    },
+    async requestUpvote() {
+      /**
+       * Requesting Upvote
+       * @param params.callback - Function to run if the the request succeeds
+      */
+      const options = {
+        method: 'POST', headers: {'Content-Type': 'application/json'}
+      };
+      const params = {
+        method: 'POST',
+        callback: () => {
+          this.$store.commit('alert', {
+            message: 'Successfully upvoted freet!', status: 'success'
+          });
+        }
+      };
+      try {
+        const upvote = await fetch(`/api/upvotes/${this.freet._id}`, options);
+        if (!upvote.ok) {
+          const res = await upvote.json();
+          throw new Error(res.error);
+        }
+
+        this.$store.commit('refreshUpvotes');
+        
         params.callback();
       } catch (e) {
         this.$set(this.alerts, e, 'error');

@@ -1,11 +1,24 @@
 import type {Request, Response, NextFunction} from 'express';
-import UserCollection from '../user/collection';
+import UserCollection from './collection';
+
+// Function for Calculating Current Age
+function calculateAge(birthday: Date) {
+  let today = new Date();
+  let age = today.getFullYear() - birthday.getFullYear();
+  let month = today.getMonth() - birthday.getMonth();
+  if (month < 0 || (month === 0 && today.getDate() < birthday.getDate())) {
+      age--;
+  }
+  return age;
+}
 
 /**
  * Checks if the current session user (if any) still exists in the database, for instance,
  * a user may try to post a freet in some browser while the account has been deleted in another or
  * when a user tries to modify an account in some browser while it has been deleted in another
  */
+
+// const uses async when using collection with promises
 const isCurrentSessionUserExists = async (req: Request, res: Response, next: NextFunction) => {
   if (req.session.userId) {
     const user = await UserCollection.findOneByUserId(req.session.userId);
@@ -13,12 +26,15 @@ const isCurrentSessionUserExists = async (req: Request, res: Response, next: Nex
     if (!user) {
       req.session.userId = undefined;
       res.status(500).json({
-        error: 'User session was not recognized.'
+        error: {
+          error: 'User session was not recognized.'
+        }
       });
       return;
     }
   }
 
+  //  now you can perform the next action
   next();
 };
 
@@ -45,6 +61,52 @@ const isValidPassword = (req: Request, res: Response, next: NextFunction) => {
   if (!passwordRegex.test(req.body.password)) {
     res.status(400).json({
       error: 'Password must be a nonempty string.'
+    });
+    return;
+  }
+
+  next();
+};
+
+/**
+ * Checks if the age that User is is valid (only ages 15+) can use Fritter
+ */
+ const isValidAge = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.body.birthday) {
+    res.status(400).json({
+      error: {
+        password: 'Birthday field cannot be empty.'
+      }
+    });
+  }
+
+  const age = calculateAge(new Date(req.body.birthday));
+  if (age < 15) {
+    res.status(403).json({
+      error: {
+        birthday: 'User is under 15 years old and cannot use Fritter per our guidelines.'
+      }
+    })} else if (age > 150) {
+    res.status(403).json({
+      error: {
+        birthday: 'User is a most likely a dinosaur and cannot use Fritter per our guidelines.'
+      }
+    });
+    return;
+  }
+
+  next();
+};
+
+/**
+ * Checks if User is 18+ or not. Would be UserSignedIn Validator.
+ */
+ const isUserAdult = async (req: Request, res: Response, next: NextFunction) => {
+  if ((await UserCollection.findOneByUserId(req.session.userId)).underage) {
+    res.status(403).json({
+      error: {
+        underage: 'User is under 18 years old and cannot see flagged Freets content per our guidelines.'
+      }
     });
     return;
   }
@@ -81,18 +143,17 @@ const isUsernameNotAlreadyInUse = async (req: Request, res: Response, next: Next
   if (req.body.username !== undefined) { // If username is not being changed, skip this check
     const user = await UserCollection.findOneByUsername(req.body.username);
 
-    // If the current session user wants to change their username to one which matches
-    // the current one irrespective of the case, we should allow them to do so
-    if (user && (user?._id.toString() !== req.session.userId)) {
-      res.status(409).json({
-        error: 'An account with this username already exists.'
-      });
-      return;
-    }
+// If the current session user wants to change their username to one which matches
+// the current one irrespective of the case, we should allow them to do so
+if (user && (user?._id.toString() !== req.session.userId)) {
+  res.status(409).json({
+    error: 'An account with this username already exists.'
+   });
+  return;
   }
-
   next();
-};
+ };
+}
 
 /**
  * Checks if the user is logged in, that is, whether the userId is set in session
@@ -152,5 +213,7 @@ export {
   isAccountExists,
   isAuthorExists,
   isValidUsername,
-  isValidPassword
+  isValidPassword,
+  isValidAge,
+  isUserAdult
 };

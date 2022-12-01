@@ -12,6 +12,14 @@ export type User = {
   username: string;
   password: string;
   dateJoined: Date;
+
+  // only Users 15+ are allowed, so users must provide their birthdays when creating an account;
+  // and whether or not they are "underage" (under 18) will be checked for censored Freets
+  birthday: Date;
+  underage: Boolean;
+
+  // updates everytime user upvotes Freets
+  upvotedFreets: Array<string>;
 };
 
 // Mongoose schema definition for interfacing with a MongoDB table
@@ -31,6 +39,21 @@ const UserSchema = new Schema({
   // The date the user joined
   dateJoined: {
     type: Date,
+    required: true
+  },
+  // The birthday of the user
+  birthday: {
+    type: Date,
+    required: true
+  },
+  // Underage Flag
+  underage: {
+    type: Boolean,
+    required: true
+  },
+  // Array of Freets that the User Upvoted
+  upvotedFreets: {
+    type: Array,
     required: true
   }
 });

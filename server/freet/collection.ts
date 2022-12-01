@@ -2,6 +2,7 @@ import type {HydratedDocument, Types} from 'mongoose';
 import type {Freet} from './model';
 import FreetModel from './model';
 import UserCollection from '../user/collection';
+import UpvoteCollection from '../upvote/collection';
 
 /**
  * This files contains a class that has the functionality to explore freets
@@ -17,15 +18,16 @@ class FreetCollection {
    *
    * @param {string} authorId - The id of the author of the freet
    * @param {string} content - The id of the content of the freet
+   * @param {Array} selfFlagged - All the flags (up to 5) selected by user when creating Freet
    * @return {Promise<HydratedDocument<Freet>>} - The newly created freet
    */
-  static async addOne(authorId: Types.ObjectId | string, content: string): Promise<HydratedDocument<Freet>> {
+  static async addOne(authorId: Types.ObjectId | string, content: string, selfFlagged: Array<string>): Promise<HydratedDocument<Freet>> {
     const date = new Date();
     const freet = new FreetModel({
       authorId,
       dateCreated: date,
       content,
-      dateModified: date
+      selfFlagged
     });
     await freet.save(); // Saves freet to MongoDB
     return freet.populate('authorId');
@@ -42,13 +44,26 @@ class FreetCollection {
   }
 
   /**
-   * Get all the freets in the database
+   * Get ALL the freets in the database for 18+ users
    *
    * @return {Promise<HydratedDocument<Freet>[]>} - An array of all of the freets
    */
   static async findAll(): Promise<Array<HydratedDocument<Freet>>> {
     // Retrieves freets and sorts them from most to least recent
-    return FreetModel.find({}).sort({dateModified: -1}).populate('authorId');
+    return FreetModel.find({}).sort({dateCreated: -1}).populate('authorId');
+  }
+
+  /**
+   * Get all the UNFLAGGED Freets for underage users
+   *
+   * @return {Promise<HydratedDocument<Freet>[]>} - An array of all of unflagged freets
+   */
+   static async findAllUnflagged(): Promise<Array<HydratedDocument<Freet>>> {
+    return FreetModel.find({
+      selfFlagged:{
+        $exists: true,
+        $type: 'array',
+        $size: 0 }}).sort({dateCreated: -1}).populate('authorId');
   }
 
   /**
@@ -59,23 +74,23 @@ class FreetCollection {
    */
   static async findAllByUsername(username: string): Promise<Array<HydratedDocument<Freet>>> {
     const author = await UserCollection.findOneByUsername(username);
-    return FreetModel.find({authorId: author._id}).sort({dateModified: -1}).populate('authorId');
+    return FreetModel.find({authorId: author._id}).sort({dateCreated: -1}).populate('authorId');
   }
 
-  /**
-   * Update a freet with the new content
-   *
-   * @param {string} freetId - The id of the freet to be updated
-   * @param {string} content - The new content of the freet
-   * @return {Promise<HydratedDocument<Freet>>} - The newly updated freet
-   */
-  static async updateOne(freetId: Types.ObjectId | string, content: string): Promise<HydratedDocument<Freet>> {
-    const freet = await FreetModel.findOne({_id: freetId});
-    freet.content = content;
-    freet.dateModified = new Date();
-    await freet.save();
-    return freet.populate('authorId');
-  }
+  // /**
+  //  * Update a freet with the new content
+  //  *
+  //  * @param {string} freetId - The id of the freet to be updated
+  //  * @param {string} content - The new content of the freet
+  //  * @return {Promise<HydratedDocument<Freet>>} - The newly updated freet
+  //  */
+  // static async updateOne(freetId: Types.ObjectId | string, content: string): Promise<HydratedDocument<Freet>> {
+  //   const freet = await FreetModel.findOne({_id: freetId});
+  //   freet.content = content;
+  //   freet.dateModified = new Date();
+  //   await freet.save();
+  //   return freet.populate('authorId');
+  // }
 
   /**
    * Delete a freet with given freetId.
@@ -97,5 +112,8 @@ class FreetCollection {
     await FreetModel.deleteMany({authorId});
   }
 }
+
+
+
 
 export default FreetCollection;

@@ -6,11 +6,20 @@ import FreetCollection from '../freet/collection';
  * Checks if a freet with freetId is req.params exists
  */
 const isFreetExists = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.params.freetId) {
+    res.status(400).json({
+      error: {
+        password: 'Freet ID cannot be empty string.'
+      }
+    });
+  }
   const validFormat = Types.ObjectId.isValid(req.params.freetId);
   const freet = validFormat ? await FreetCollection.findOne(req.params.freetId) : '';
   if (!freet) {
     res.status(404).json({
-      error: `Freet with freet ID ${req.params.freetId} does not exist.`
+      error: {
+        freetNotFound: `Freet with freet ID ${req.params.freetId} does not exist.`
+      }
     });
     return;
   }
@@ -20,7 +29,7 @@ const isFreetExists = async (req: Request, res: Response, next: NextFunction) =>
 
 /**
  * Checks if the content of the freet in req.body is valid, i.e not a stream of empty
- * spaces and not more than 140 characters
+ * spaces and not more than 280 characters
  */
 const isValidFreetContent = (req: Request, res: Response, next: NextFunction) => {
   const {content} = req.body as {content: string};
@@ -31,9 +40,9 @@ const isValidFreetContent = (req: Request, res: Response, next: NextFunction) =>
     return;
   }
 
-  if (content.length > 140) {
+  if (content.length > 280) {
     res.status(413).json({
-      error: 'Freet content must be no more than 140 characters.'
+      error: 'Freet content must be no more than 280 characters.'
     });
     return;
   }

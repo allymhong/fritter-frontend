@@ -7,6 +7,8 @@ type UserResponse = {
   _id: string;
   username: string;
   dateJoined: string;
+  underage: Boolean;
+  birthday: string;
 };
 
 /**
@@ -16,6 +18,14 @@ type UserResponse = {
  * @returns {string} - formatted date as string
  */
 const formatDate = (date: Date): string => moment(date).format('MMMM Do YYYY, h:mm:ss a');
+
+/**
+ * Encode birthday as an unambiguous string
+ *
+ * @param {Date} birthday - A date object
+ * @returns {string} - formatted date as string
+ */
+ const formatBirthday = (date: Date): string => moment(date).utcOffset(60).format('MMMM Do YYYY');
 
 /**
  * Transform a raw User object from the database into an object
@@ -35,7 +45,10 @@ const constructUserResponse = (user: HydratedDocument<User>): UserResponse => {
   return {
     ...userCopy,
     _id: userCopy._id.toString(),
-    dateJoined: formatDate(user.dateJoined)
+    dateJoined: formatDate(user.dateJoined),
+    underage: userCopy.underage,
+    // for some reason wasn't outputting the right birthday time, until I did the UTC offset, so..
+    birthday: formatBirthday(user.birthday)
   };
 };
 

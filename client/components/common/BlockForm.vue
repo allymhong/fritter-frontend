@@ -18,6 +18,7 @@
           :value="field.value"
           @input="field.value = $event.target.value"
         />
+        <!-- if field.id is citations, loop through citations -->
         <input
           v-else
           :type="field.id === 'password' ? 'password' : 'text'"
